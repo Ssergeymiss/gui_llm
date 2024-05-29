@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Chat Form</title>
+<style>
+    body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(to bottom, #000, #fff);
+        color: #fff; /* Изменили цвет текста на белый */
+    }
+
+    #sidebar {
+        width: 15vw;
+        height: 100vh;
+        background: linear-gradient(to bottom, #000, #fff);
+        overflow-y: auto;
+    }
+
+    #header {
+    width: 15vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #000, #fff);
+    color: #fff; /* Изменили цвет текста на белый */
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+    #chat-container {
+        position: fixed;
+        width: calc(100% - 15vw);
+        max-width: 85vw;
+        height: 100vh;
+        overflow-y: auto;
+        padding: 20px;
+        border: 1px solid #000;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #000, #fff);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        right: 0;
+        word-wrap: break-word;
+    }
+
+    #chat-messages {
+        max-height: calc(100vh - 15vh);
+        overflow-y: auto;
+        flex-direction: column-reverse;
+    }
+    #new-chat-button {
+    margin-bottom: 10px; /* Добавим отступ вниз для кнопки создания нового чата */
+}
+
+    .message {
+        margin-top: 10px;
+        margin-bottom: 10px;
+        padding: 15px;
+        border-radius: 20px;
+    }
+
+    .user-message {
+        text-align: right;
+        background-color: #fff; /* Белый фон */
+        color: #000; /* Черный текст */
+    }
+
+    .bot-message {
+        text-align: left;
+        background-color: #000; /* Черный фон */
+        color: #fff; /* Белый текст */
+    }
+
+    form {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        margin-top: 20px;
+    }
+
+    .bimer {
+        background: linear-gradient(135deg, #000, #fff);
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: calc(100vh - 89vh);
+    }
+
+    .input-container {
+        display: flex;
+        align-items: center;
+        background: linear-gradient(135deg, #000, #fff);
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    input[type="text"],
+    button {
+        padding: 15px;
+        border: 1px solid #000;
+        border-radius: 5px;
+    }
+
+    input[type="text"] {
+        flex: 1;
+    }
+
+    button {
+        background-color: #000;
+        color: white; /* Изменили цвет текста на белый */
+        border: none;
+        cursor: pointer;
+        margin-left: 10px;
+        margin-buttom: 10px;
+    }
+
+    button:hover {
+        background-color: #333; /* Чуть темнее для эффекта нажатия */
+    }
+
+    .chat-button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 5px;
+    text-align: left;
+}
+    #chat-blocks button {
+    display: block;
+    margin-bottom: 10px; /* Добавим небольшой отступ между кнопками */
+}
+</style>
+
+</head>
+<body>
+    <div id="sidebar">
+        <h1>Меню</h1>
+        <button id="new-chat-button">Новый чат</button>
+        <div id="chat-blocks">
+            {% for chat in chats %}
+                <button id="{{ chat }}" onclick="getChatHistory('{{ chat }}')">{{ chat }}</button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="chat-container">
+        <div id="chat-messages">
+            {% for message, type in messages %}
+                <div class="message {% if type == 'ai' %}bot-message{% else %}user-message{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+
+        <form id="chat-form">
+            <div class="bimer">
+                <div class="input-container">
+                    <input type="text" id="user-message" name="user-message" placeholder="Введите сообщение">
+                    <button type="submit">Отправить</button>
+                </div>
+            </div>
+        </form>
+</div>
+
+    <script>
+        document.getElementById('chat-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Предотвращаем стандартное поведение формы
+
+            var userMessage = document.getElementById('user-message').value; // Получаем текст сообщения от пользователя
+
+            var chatMessages = document.getElementById('chat-messages');
+            var userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'message user-message';
+            userMessageDiv.textContent = userMessage;
+            chatMessages.appendChild(userMessageDiv);
+
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 'message': userMessage })
+            })
+            .then(response => response.json())
+            .then(data => {
+                                var botMessageDiv = document.createElement('div');
+                                botMessageDiv.className = 'message';
+                                botMessageDiv.textContent = data.response;
+                                chatMessages.appendChild(botMessageDiv);
+                                scrollChatToBottom(); // Прокручиваем чат вниз после добавления сообщения от бота
+                            })
+                            .catch(error => {
+                                console.error('Ошибка:', error);
+                                scrollChatToBottom(); // Прокручиваем чат вниз в случае ошибки
+                            });
+
+            document.getElementById('user-message').value = ''; // Очищаем поле ввода после отправки
+        });
+
+        const chatMessages = document.getElementById('chat-messages');
+
+    // Функция, которая будет прокручивать чат вниз
+    function scrollChatToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Вызовите функцию при загрузке страницы и каждый раз после добавления нового сообщения
+    window.onload = scrollChatToBottom;
+    document.getElementById('chat-form').addEventListener('submit', scrollChatToBottom);
+
+let chatIdCounter = 1; // Untuk menghasilkan ID chat unik
+
+function handleUserInput(event) {
+    if (event.key === 'Enter') {
+        console.log('Пользователь ввел: ' + currentChatInput.value);
+    }
+}
+
+function createNewChatButton() {
+    // Dapatkan username dari server
+    fetch('/get-username')
+    .then(response => response.json())
+    .then(data => {
+        const username = data.username;
+
+        // Buat ID chat unik dengan awalan username
+        const chatId = `${username} chat-${chatIdCounter}`;
+
+        // Buat tombol chat dengan ID unik
+        const chatButton = document.createElement('button');
+        chatButton.classList.add('chat-button');
+        chatButton.id = chatId;
+        const chatInput = document.createElement('input'); // Добавляем поле ввода
+        chatInput.type = 'text'; // Устанавливаем тип поля ввода
+        chatInput.placeholder = 'Введите сообщение'; // Добавляем подсказку в поле ввода
+
+        chatButton.appendChild(chatInput); // Добавляем поле ввода к кнопке чата
+
+        chatInput.addEventListener('keyup', handleUserInput);
+
+        chatButton.textContent = `${username} ${chatInput.value}`;
+
+
+        chatButton.addEventListener('click', () => {
+            // Ambil riwayat chat dari server
+            fetch(`/chat/${chatId}`)
+            .then(response => response.json())
+            .then(data => {
+                chatMessages.innerHTML = '';
+                // Proses pesan chat yang diterima
+                console.log(data.messages); // Tampilkan pesan di konsol sebagai contoh
+            })
+            .catch(error => console.error('Terjadi kesalahan saat mengambil riwayat chat:', error));
+        });
+
+        document.getElementById('chat-blocks').appendChild(chatButton);
+
+        chatIdCounter++; // Tingkatkan penghitung untuk ID chat selanjutnya
+
+        // Buat chat baru dengan riwayat kosong
+        fetch('/chat/new', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 'chat_id': chatId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Proses respons jika diperlukan
+        })
+        .catch(error => console.error('Terjadi kesalahan saat membuat chat baru:', error));
+    })
+    .catch(error => console.error('Terjadi kesalahan saat mendapatkan username:', error));
+}
+
+document.getElementById('new-chat-button').addEventListener('click', createNewChatButton);
+
+function getChatHistory(chatId) {
+    fetch(`/chat/${chatId}`)
+        .then(response => response.json())
+        .then(data => {
+            const chatMessages = document.getElementById('chat-messages');
+            chatMessages.innerHTML = ''; // Очистить содержимое чата перед добавлением новых сообщений
+
+            data.messages.forEach(([message, type]) => {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message', type === 'ai' ? 'bot-message' : 'user-message');
+                messageElement.innerText = message;
+                chatMessages.appendChild(messageElement);
+            });
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+        });
+}
+
+
+
+    </script>
+</body>
+</html>
